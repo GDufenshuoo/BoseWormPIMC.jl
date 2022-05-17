@@ -1,0 +1,16 @@
+Dimension 3
+Density 0.2
+
+Temperature 0.5
+Timeslices  512
+
+Atom        H2  10  Bose    0.5 3   PES 2   0.0
+Molecule    
+
+Rotation    
+Worm        
+
+# This is BLOCK and STEPS
+Log     500     5000
+
+xyzInit Read    example.xyz 
