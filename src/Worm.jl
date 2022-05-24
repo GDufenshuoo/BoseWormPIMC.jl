@@ -4,7 +4,7 @@ export
     Worm_Init,
     Worm_move
 
-struct Worm_{T}
+mutable struct Worm_{T}
     ira::Int
     masha::Int
     type::Int
@@ -17,12 +17,12 @@ struct Worm_{T}
     _norm::T
     _dr²::Vector{T}
     _atom::Vector{T}
-    neighbor::Vector{T}
+    neighbor::Matrix{T}
     _Particle_table::Vector{Int}
     state::Bool
 end
 
-function Worm_Init(Particle::Particle_,System::System_setting)
+function Worm_Init(type,worm_m,worm_c,Particle::Particle_,System::System_setting)
     Worm = Worm_(
         0,
         0,
@@ -34,20 +34,23 @@ function Worm_Init(Particle::Particle_,System::System_setting)
         0.0,
         0.0,
         0.0,
-        zero(Particle.Number[type]),
-        zero(Particle.Number[type]),
+        zeros(Particle.Number[type]),
+        zeros(Particle.Number[type]),
         zeros(Particle.Number[type],2),
-        Array{Vector{Int}}(undef, Particle.Number[type]),
+        Array{Int}(undef, Particle.Number[type]),
         false
         )
 
-    Worm.m = System.worm_m
-    Worm.Timeslices = Particle.Timeslices
-    System.τ = Particle.τ
+    worm_Cutoff = 100
 
-    Worm.c = System.Density/Particle.Number[type]*Worm.Timeslices*Worm.m
+    Worm.m = worm_m
+    Worm.Timeslices = Particle.Timeslices
+
+    Worm.c = worm_c*System.Density/Particle.Number[type]*Worm.Timeslices*Worm.m
     Worm._norm = Worm.c*Worm.Timeslices*Worm.m
-    Worm.Cutoff² = System.worm_Cutoff^2 * Worm.m*4*Particle.λ[type]*System.τ
+    Worm.Cutoff² = worm_Cutoff^2 * Worm.m*4*Particle.λ[type]*Particle.τ
+
+    return Worm
 end
 
 function Worm_move(particle_type, Worm::Worm_, Particle::Particle_)
@@ -58,7 +61,7 @@ function Worm_move(particle_type, Worm::Worm_, Particle::Particle_)
             Worm_close!(Worm::Worm_,Particle.Coords)
         end
         if Worm.state
-            if QcasiRand!(6,step) > 0.5
+            if QcasiRand(6,Particle.Count) > 0.5
                 Worm_advance!(Worm::Worm_,Particle::Particle_)
             else
                 Worm_recede!(Worm::Worm_,Particle::Particle_)
@@ -73,9 +76,9 @@ function Worm_move(particle_type, Worm::Worm_, Particle::Particle_)
 end 
 
 function Worm_open!(Worm::Worm_,Particle::Particle_)
-    Worm.atom_i = QcasiRand!(7,step)
-    Worm.ira = QcasiRand!(8,step)
-    σ = QcasiRand!(9,step)
+    Worm.atom_i = QcasiRand(7,Particle.Count)
+    Worm.ira = QcasiRand(8,Particle.Count)
+    σ = QcasiRand(9,Particle.Count)
     Worm.masha = (Worm.ira + σ) % Worm.Timeslices
     Worm.atom_m = Worm.atom_i
 
@@ -83,7 +86,7 @@ function Worm_open!(Worm::Worm_,Particle::Particle_)
         Worm.atom_m = Particle_Index[Worm.atom_i]
     end
     Probability = Worm_open_p(σ, Worm::Worm_,Particle::Particle_)
-    if Probability >= 1 || Probability > QcasiRand!(10,step)
+    if Probability >= 1 || Probability > QcasiRand(10,Particle.Count)
         Worm.state = true
     end
 end
@@ -98,7 +101,7 @@ function Worm_close!(Worm::Worm_,Coords)
         i_t_2 = Worm.ira + σ 
         Sample_middle!(i_t_0,i_t_2,Worm.atom_i,Worm.atom_m,Coords)
         Probability = 1/Worm_open_p(σ, Worm::Worm_,Particle::Particle_)
-        if Probability >= 1 || Probability > QcasiRand!(11,step)
+        if Probability >= 1 || Probability > QcasiRand(11,Particle.Count)
             Worm.state = false
         end
     end
@@ -109,7 +112,7 @@ function Worm_advance!(Worm::Worm_,Particle::Particle_)
     if σ < 0
         σ += Worm.Timeslices
     end
-    advance = QcasiRand!(12,step) + 1 
+    advance = QcasiRand(12,Particle.Count) + 1 
     if σ - advance > 0
         type = Worm.type
         offset =  Particle.Type_offset[type]
@@ -121,11 +124,11 @@ function Worm_advance!(Worm::Worm_,Particle::Particle_)
         p_t_0 = offset + (Worm.atom_i+i_t_0)*Worm.Timeslices
         p_t_2 = offset + (atom_i_new+i_t_2)*Worm.Timeslices
         for dim in 1:Dimension
-            Particle.Coords[p_t_2+1,dim] = Particle.Coords[p_t_0+1,dim] + QcasiRand!(12,step) ###
+            Particle.Coords[p_t_2+1,dim] = Particle.Coords[p_t_0+1,dim] + QcasiRand(12,Particle.Count) ###
         end
         Sample_middle!(i_t_0,i_t_2,Worm.atom_i,atom_i_new,Particle)
         E_p = Worm_Potential_Energy(i_t_0,i_t_2+1,Worm.atom_i,atom_i_new, Worm::Worm_,Particle::Particle_)
-        if E_p < 0 || exp(-E_p*τ) > QcasiRand!(13,step)
+        if E_p < 0 || exp(-E_p*τ) > QcasiRand(13,Particle.Count)
             Worm.ira = ira_new
             Worm.atom_i = atom_i_new
         end
@@ -137,7 +140,7 @@ function Worm_recede!(Worm::Worm_,Particle::Particle_)
     if segm < 0
         σ += Worm.Timeslices
     end
-    recede = QcasiRand!(14,step)
+    recede = QcasiRand(14,Particle.Count)
     if σ >= recede + 1
         i_t_0 = Worm.ira - recede
         i_t_1 = Worm.ira
@@ -149,7 +152,7 @@ function Worm_recede!(Worm::Worm_,Particle::Particle_)
             atom_0 = Ring_Index[atom_0]
         end
         E_p = Worm_Potential_Energy(i_t_0,i_t_1,atom_0,atom_1, Worm::Worm_,Particle::Particle_)
-        if E_p > 0 || exp(E_p*System.τ) > QcasiRand!(15,step)
+        if E_p > 0 || exp(E_p*Particle.τ) > QcasiRand(15,Particle.Count)
             Worm.ira = i_t_0 % Worm.Timeslices
             Worm.atom_i = atom_0
         end
@@ -206,15 +209,16 @@ function Worm_swap!(Worm::Worm_,Particle::Particle_)
                 end
                 E_p = Potential_Energy(gatom,p_i_t,Particle::Particle_) - Potential_Energy(gatom,p_i_t,Particle::Particle_)
             end
-            Probability = exp(-E_p*System.τ)
+            Probability = exp(-E_p*Particle.τ)
             count = Particle_table(atom_0,p_i_t_0,p_i_t_1,σ,i_t_1, Worm::Worm_,Particle::Particle_)
             pnorm_new = 0.0
             for i_c in 1:count
                 pnorm_new += Worm._Particle_table[i_c]
             end
             Probability *= pnorm_old/pnorm_new
-            if Probability > 1 || Probability > QcasiRand!(16,step)
-                for i_t in (i_t_0+1):(i_t_1-1)
+            # if Probability > QcasiRand(16,Particle.Count)
+            if Probability > 1 || Probability > QcasiRand(16,Particle.Count)
+            for i_t in (i_t_0+1):(i_t_1-1)
                     offset = offset_0
                     for dim in 1:Dimension
                         p_i_t = i_t%Worm.Timeslices
@@ -343,7 +347,7 @@ function Worm_open_p(σ, Worm::Worm_,Particle::Particle_)
     end
     kin /= Particle.T_wave²[Worm.type]*σ
     E_p = Worm_Potential_Energy(Worm.ira,Worm.ira+σ,Worm.atom_i,Worm.atom_m, Worm::Worm_,Particle::Particle_)
-    E_p *= System.τ
+    E_p *= Particle.τ
 
     return Worm.c*Particle.Number[Worm.type]*Worm.Timeslices*Worm.m^(σ,Dimension*0.5)*exp(kin+pot)
 end

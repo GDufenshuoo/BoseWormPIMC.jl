@@ -1,17 +1,21 @@
 
 
-function Potential_Energy(atom_0, Worm::Worm_=Worm,Particle::Particle_=Particle)
+function Potential_Energy(atom_0, position, Worm::Worm_=Worm,Particle::Particle_=Particle)
     Name_0 = Particle.Name[atom_0]
     offset_0 = Particle.Timeslices * atom_0
 
     E_p = 0.0
 
-    for atom_i in 1:Number_Atoms
+    for atom_i in 1:Particle.Number[atom_0]
         if atom_i != atom_0
-            Name_i = Particle.Name[atom_i]
+            # Name_i = Particle.Name[atom_i]
             offset_i = Particle.Timeslices * atom_i
+            # if WORM_switch && Worm.exists && (Worm.Particle_Type == Name_i) 
+            #     Wordline = Wordline_check((atom_i-Type_offset[Name_i]),i_)
+            # end
+            # if Particle.Molcule_check[Name_0] || Particle.Molcule_check[Name_i]
             for i_t in 1:Particle.Timeslices
-                Potential_Energy_loop_i_t(Name_0, position, offset_0, Name_i, offset_i, i_t, Worm::Worm_,Particle::Particle_)
+                Potential_Energy_loop_i_t(position, offset_0, offset_i, i_t, Worm::Worm_,Particle::Particle_)
             end
         end
     end
@@ -29,19 +33,21 @@ function Potential_Energy_single(atom_0, position, i_t, Worm::Worm_=Worm,Particl
         if atom_i != atom_0
             Name_i = Particle.Name[atom_i]
             offset_i = Particle.Timeslices * atom_i
-            Potential_Energy_loop_i_t(Name_0, position, offset_0, Name_i, offset_i, i_t, Worm::Worm_, Particle::Particle_)
+            # if WORM_switch && Worm.exists && (Worm.Particle_Type == Name_i) 
+            #     Wordline = Wordline_check((atom_i-Type_offset[Name_i]),i_)
+            # end
+            # if Particle.Molcule_check[Name_0] || Particle.Molcule_check[Name_i]
+            Potential_Energy_loop_i_t(position, offset_0, offset_i, i_t, Worm::Worm_, Particle::Particle_)
         end
     end
 
     return E_p
 end
 
-function Potential_Energy_loop_i_t(Name_0, position, offset_0, Name_i, offset_i, i_t, Worm::Worm_=Worm,Particle::Particle_=Particle)
+function Potential_Energy_loop_i_t(position, offset_0, offset_i, i_t, Worm::Worm_=Worm,Particle::Particle_=Particle)
     Wordline = true
             
-    if WORM_switch && Worm.exists && (Worm.Particle_Type == Name_i) 
-        Wordline = Wordline_check((atom_i-Type_offset[Name_i]),i_)
-    end
+
 
     dr² = 0.0
     if Wordline
@@ -52,12 +58,10 @@ function Potential_Energy_loop_i_t(Name_0, position, offset_0, Name_i, offset_i,
             dr² += dr[dim]^2
         end
         r = sqrt(dr²)
-
-        if Particle.Molcule_check[Name_0] || Particle.Molcule_check[Name_i]
-            return
-        else
-            E_p += PES_1D(r,Name_i,Particle.Potential)
-        end
+        Name_i = 1
+        # if Particle.Molcule_check[Name_0] || Particle.Molcule_check[Name_i]
+            E_p = PES_1D(r,Name_i,Particle.Potential)
+        # end
         
     end
 end
@@ -116,7 +120,7 @@ function Rotation_Density(γ,type,Potential=Particle.Potential)
 end
 
 function PES_1D(r,Name_i,Potential=Particle.Potential)
-    PES_1D
+    Potential[1](r)
 end
 
 function PES_2D(r,Cos_t,Name_0,Potential=Particle.Potential)
