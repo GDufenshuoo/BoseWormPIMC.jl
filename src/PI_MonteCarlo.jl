@@ -60,8 +60,8 @@ mutable struct Particle_{T}
     Potential
 end
 
-function Init_MonteCarlo()
-    setting = readdlm("MC.in"; comments=true, comment_char='#')
+function Init_MonteCarlo(MC_IN_PATH::String)
+    setting = readdlm(MC_IN_PATH; comments=true, comment_char='#')
 
     System = System_setting(0,0.0,0.0,0,0,0)
 
@@ -321,11 +321,11 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
         if abs(Density_present)<1e-10
             Density_present = 0.0
         end
-        i_t_r0 = i_t * Particle.Rotation_Ratio
-        i_t_r1 = i_t_r0 + Particle.Rotation_Ratio
+        i_t_r1 = i_t * Particle.Rotation_Ratio
+        i_t_r0 = i_t_r1 + Particle.Rotation_Ratio
 
         E_p_present = Threads.Atomic{Float64}(0.0)
-        Threads.@threads for i_t_r in i_t_r0:i_t_r1
+        Threads.@threads for i_t_r in (i_t_r0+1):i_t_r1
             Threads.atomic_add!(E_p_present,Potential_rotation_Energy(particle_wordline,Angle_Cosine,i_t_r))
         end
 
@@ -343,7 +343,7 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
         # i_t_r1 = i_t_r0 + Particle.Rotation_Ratio
 
         E_p_forword = Threads.Atomic{Float64}(0.0)
-        Threads.@threads for i_t_r in 1:Particle.Rotation_Ratio
+        Threads.@threads for i_t_r in (i_t_r0+1):i_t_r1
             Threads.atomic_add!(E_p_forword,Potential_rotation_Energy(particle_wordline,Particle.Coords_forward,i_t_r))
         end
 
