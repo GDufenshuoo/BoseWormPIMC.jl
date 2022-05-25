@@ -6,12 +6,17 @@ Potential_Energy_single,
 Potential_rotation_Energy,
 Rotation_Density
 
+
+"""
+after benchmark this part is not suitable for multi-threads
+"""
 function Potential_Energy(atom_0, position, Worm::Worm_=Worm,Particle::Particle_=Particle)
     # Name_0 = Particle.Name[atom_0]
     offset_0 = Particle.Timeslices * atom_0
 
-    E_p = Threads.Atomic{Float64}(0.0)
+    E_p = 0.0#Threads.Atomic{Float64}(0.0)
 
+    # Threads.@threads 
     for atom_i in 1:Particle.Total_particle
         if atom_i != atom_0
             # Name_i = Particle.Name[atom_i]
@@ -21,8 +26,9 @@ function Potential_Energy(atom_0, position, Worm::Worm_=Worm,Particle::Particle_
             # end
             # if Particle.Molcule_check[Name_0] || Particle.Molcule_check[Name_i]
 
-            Threads.@threads for i_t in 1:Particle.Timeslices
-                Threads.atomic_add!(E_p,Potential_Energy_loop_i_t(position, offset_0, offset_i, i_t, Worm::Worm_,Particle::Particle_))
+            for i_t in 1:Particle.Timeslices
+                # Threads.atomic_add!(E_p,Potential_Energy_loop_i_t(position, offset_0, offset_i, i_t, Worm::Worm_,Particle::Particle_))
+                E_p+=Potential_Energy_loop_i_t(position, offset_0, offset_i, i_t, Worm::Worm_,Particle::Particle_)
             end
         end
     end
@@ -34,9 +40,9 @@ function Potential_Energy_single(atom_0, position, i_t, Worm::Worm_=Worm,Particl
     # Name_0 = Particle.Name[atom_0]
     offset_0 = Particle.Timeslices * (atom_0-1)
 
-    E_p = Threads.Atomic{Float64}(0.0)
+    E_p = 0.0
 
-    Threads.@threads for atom_i in 1:Particle.Total_particle
+    for atom_i in 1:Particle.Total_particle
         if atom_i != atom_0
             # Name_i = Particle.Name[atom_i]
             offset_i = Particle.Timeslices * (atom_i-1)
@@ -44,7 +50,7 @@ function Potential_Energy_single(atom_0, position, i_t, Worm::Worm_=Worm,Particl
             #     Wordline = Wordline_check((atom_i-Type_offset[Name_i]),i_)
             # end
             # if Particle.Molcule_check[Name_0] || Particle.Molcule_check[Name_i]
-            Threads.atomic_add!(E_p,Potential_Energy_loop_i_t(position, offset_0, offset_i, i_t, Worm::Worm_, Particle::Particle_))
+            E_p += Potential_Energy_loop_i_t(position, offset_0, offset_i, i_t, Worm::Worm_, Particle::Particle_)
         end
     end
 
@@ -76,13 +82,12 @@ end
 function Potential_rotation_Energy(atom_0,Angle_Cosine,i_t, Worm::Worm_=Worm,Particle::Particle_=Particle)
     # Name_0 = Particle.Name[atom_0]
     offset_0 = Particle.Timeslices * atom_0
-    E_p = Threads.Atomic{Float64}(0.0)
-
-    Threads.@threads for atom_i in 1:Particle.Total_particle
+    E_p = 0.0
+    for atom_i in 1:Particle.Total_particle
         if atom_i != atom_0
             # Name_i = Particle.Name[atom_i]
             offset_i = Particle.Timeslices * (atom_i-1)
-            Threads.atomic_add!(E_p,Potential_rotation_Energy_loop_i_t(Angle_Cosine, offset_0, offset_i, i_t, Worm, Particle))
+            E_p += Potential_rotation_Energy_loop_i_t(Angle_Cosine, offset_0, offset_i, i_t, Worm, Particle)
         end
     end
 

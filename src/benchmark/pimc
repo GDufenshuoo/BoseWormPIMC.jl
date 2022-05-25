@@ -10,3 +10,43 @@ BenchmarkTools.Trial: 4 samples with 1 evaluation.
 
  Memory estimate: 579.89 MiB, allocs estimate: 17336010.
 """
+
+"""
+julia> @benchmark MonteCarlo_move!(1,Particle)
+BenchmarkTools.Trial: 1254 samples with 1 evaluation.
+ Range (min … max):  3.328 ms … 11.013 ms  ┊ GC (min … max):  0.00% … 59.60%
+ Time  (median):     3.472 ms              ┊ GC (median):     0.00%
+ Time  (mean ± σ):   3.984 ms ±  1.585 ms  ┊ GC (mean ± σ):  10.09% ± 15.34%
+
+  █▇▄▄▄▅                                                      
+  ██████▅▄▅▅▁▁▄▁▁▄▁▄▁▁▁▁▁▁▁▁▁▄▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▄▆▇█▇█▇▅▆▆ █
+  3.33 ms      Histogram: log(frequency) by time     10.3 ms <
+
+ Memory estimate: 3.52 MiB, allocs estimate: 128016.
+
+julia> @benchmark for time_slices in 1:Particle.Timeslices
+           Bisection_Move!(2,time_slices,Particle)
+       end
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):  412.293 μs …  10.665 ms  ┊ GC (min … max): 0.00% … 91.57%
+ Time  (median):     436.373 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   485.643 μs ± 279.538 μs  ┊ GC (mean ± σ):  1.86% ±  3.33%
+
+  ▆███▆▄▄▃▃▃▃▂▂▂▂▂▁▂▂▄▅▃▃▂▁▂▁▁                                  ▂
+  ███████████████████████████████▇█▇█▇█▇▇██▇▇▆▇▇█▇▇▇▇▅▅▆▆▆▅▅▆▆▃ █
+  412 μs        Histogram: log(frequency) by time        826 μs <
+
+ Memory estimate: 70.03 KiB, allocs estimate: 897.
+
+julia> @benchmark Worm_move!(1)
+BenchmarkTools.Trial: 10000 samples with 836 evaluations.
+ Range (min … max):  138.874 ns … 321.341 ns  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     143.309 ns               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   146.135 ns ±  14.862 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+  ▄ ▆█▂▂▃                                                       ▁
+  ███████▇█▇▅▆█▇▆█▇▆▇▇▇▆▇▅▅▃▇▅▅▅▆▇▇▆▆▆▅▄▃▅▇▅▄▅▅▅▅▄▄▅▄▄▃▁▃▁▄▄▄▄▄ █
+  139 ns        Histogram: log(frequency) by time        223 ns <
+
+ Memory estimate: 0 bytes, allocs estimate: 0.
+ """

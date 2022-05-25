@@ -15,14 +15,14 @@ global const Dimension = System.Dimension
 
 
 
-@benchmark for i in 1:10
-    for time_slices in 1:Particle.Timeslices
+# @benchmark for i in 1:10
         # for particle_type in 1:size(Particle.Type)[1]
-            MonteCarlo_move!(1,Particle)
-            Bisection_Move!(2,time_slices,Particle)
-            Worm_move!(1)
-            MonteCarlo_Rotation_move!(2,Particle)
+        @benchmark MonteCarlo_move!(1,Particle)
+        # @benchmark for time_slices in 1:Particle.Timeslices
+        #     Bisection_Move!(2,time_slices,Particle)
         # end
-    end
-end
+        # @benchmark Worm_move!(1)
+        # @benchmark MonteCarlo_Rotation_move!(2,Particle)
+        # end
+# end
 

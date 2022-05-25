@@ -188,17 +188,20 @@ end
 
 
 function MonteCarlo_move!(particle_type,Particle::Particle_)
-    for i in 1:Particle.Number[particle_type]
+    Threads.@threads for i in 1:Particle.Number[particle_type]
         particle_wordline = Particle.wordline[particle_type] + i
         offset = (particle_wordline-1) * Particle.Timeslices
-        for i_t in 1:Particle.Timeslices
-            for dim in 1:Dimension
-                # disp = MonteCarlo_step[particle_type] * QcasiRand(1,Particle.Count)
-                disp = Particle.Step[particle_type]*(rand() - 0.5)
+        threads_slices = Particle.Timeslices/8
+        Threads.@threads for i in 1:2
+            for i_t in Int(2*i):Int(2*i+Particle.Timeslices/8)
+                for dim in 1:Dimension
+                    # disp = MonteCarlo_step[particle_type] * QcasiRand(1,Particle.Count)
+                    disp = Particle.Step[particle_type]*(rand() - 0.5)
 
-                Particle.Coords_forward[offset+i_t,dim] = Particle.Coords[offset+i_t,dim] + disp
-                # println(disp,"  ",Particle.Coords_forward[offset+i_t,dim])
-            end            
+                    Particle.Coords_forward[offset+i_t,dim] = Particle.Coords[offset+i_t,dim] + disp
+                    # println(disp,"  ",Particle.Coords_forward[offset+i_t,dim])
+                end            
+            end
         end
         Delta_E_p = Potential_Energy(particle_wordline,Particle.Coords_forward) - Potential_Energy(particle_wordline,Particle.Coords)
         MonteCarlo_accept!(Delta_E_p,offset,Particle)
@@ -209,7 +212,8 @@ end
 multilevel Metropolis
 """
 function Bisection_Move!(particle_type,time_slices,Particle::Particle_)
-    for i in 1:Particle.Number[particle_type]
+    
+    Threads.@threads for i in 1:Particle.Number[particle_type]
         offset = Particle.wordline[particle_type]*Particle.Timeslices
         gatom = Particle.Timeslices
         pit = Int((time_slices + Particle.multilevel_σ[particle_type])%Particle.Timeslices)
@@ -324,9 +328,9 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
         i_t_r1 = i_t * Particle.Rotation_Ratio
         i_t_r0 = i_t_r1 + Particle.Rotation_Ratio
 
-        E_p_present = Threads.Atomic{Float64}(0.0)
-        Threads.@threads for i_t_r in (i_t_r0+1):i_t_r1
-            Threads.atomic_add!(E_p_present,Potential_rotation_Energy(particle_wordline,Angle_Cosine,i_t_r))
+        E_p_present = 0.0
+        for i_t_r in (i_t_r0+1):i_t_r1
+            E_p_present += Potential_rotation_Energy(particle_wordline,Angle_Cosine,i_t_r)
         end
 
         p_0 = 0.0
@@ -342,9 +346,9 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
         # i_t_r0 = i_t * Particle.Rotation_Ratio
         # i_t_r1 = i_t_r0 + Particle.Rotation_Ratio
 
-        E_p_forword = Threads.Atomic{Float64}(0.0)
-        Threads.@threads for i_t_r in (i_t_r0+1):i_t_r1
-            Threads.atomic_add!(E_p_forword,Potential_rotation_Energy(particle_wordline,Particle.Coords_forward,i_t_r))
+        E_p_forword = 0.0
+        for i_t_r in (i_t_r0+1):i_t_r1
+            E_p_forword += Potential_rotation_Energy(particle_wordline,Particle.Coords_forward,i_t_r)
         end
 
         Density = 0.0
@@ -354,7 +358,7 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
             Density = 1.0
         end
 
-        Density *= exp(-Particle.τ*(E_p_forword[]-E_p_present[]))
+        Density *= exp(-Particle.τ*(E_p_forword-E_p_present))
 
         # if Rotation_Density > 1 || Rotation_Density > QcasiRand(5,Particle.Count)
         if Density > 1 || Density > rand()

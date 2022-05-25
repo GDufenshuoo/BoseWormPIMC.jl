@@ -2,7 +2,7 @@ Dimension 3
 Density 0.2
 
 Temperature 0.5
-Timeslices  32
+Timeslices  128
 
 #Atom/Mole          Name    Number  Type    Step    multilevel  PES_div             PES             Mass    Rotation_constant
     Atom            paraH2  10      Bose    0.5     3           OCS_paraH2.PES      paraH2_paraH2   2       0.0
