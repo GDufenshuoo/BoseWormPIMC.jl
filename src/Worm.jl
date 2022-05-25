@@ -53,7 +53,7 @@ function Worm_Init(type,worm_m,worm_c,Particle::Particle_,System::System_setting
     return Worm
 end
 
-function Worm_move(particle_type, Worm::Worm_, Particle::Particle_)
+function Worm_move!(particle_type, Worm::Worm_=Worm, Particle::Particle_=Particle)
     for i in 1:Particle.Number[particle_type]
         if Worm.state
             Worm_open!(Worm::Worm_,Particle::Particle_)
@@ -61,7 +61,8 @@ function Worm_move(particle_type, Worm::Worm_, Particle::Particle_)
             Worm_close!(Worm::Worm_,Particle.Coords)
         end
         if Worm.state
-            if QcasiRand(6,Particle.Count) > 0.5
+            # if QcasiRand(6,Particle.Count) > 0.5
+            if rand() > 0.5
                 Worm_advance!(Worm::Worm_,Particle::Particle_)
             else
                 Worm_recede!(Worm::Worm_,Particle::Particle_)
@@ -69,16 +70,20 @@ function Worm_move(particle_type, Worm::Worm_, Particle::Particle_)
         else
             Worm_close!(Worm::Worm_,Particle::Particle_)
         end
-        if BOSES[particle_type] && Worm.state
+        if Particle.Type[particle_type]==0 && Worm.state
             Worm_swap!(Worm::Worm_,Particle::Particle_)
         end
     end
 end 
 
 function Worm_open!(Worm::Worm_,Particle::Particle_)
-    Worm.atom_i = QcasiRand(7,Particle.Count)
-    Worm.ira = QcasiRand(8,Particle.Count)
-    σ = QcasiRand(9,Particle.Count)
+    # Worm.atom_i = QcasiRand(7,Particle.Count)
+    # Worm.ira = QcasiRand(8,Particle.Count)
+    # σ = QcasiRand(9,Particle.Count)
+    Worm.atom_i = rand(1:Particle.Number[type])
+    Worm.ira = rand(1:Particle.Timeslices)
+    σ = rand(1:Worm.m)
+
     Worm.masha = (Worm.ira + σ) % Worm.Timeslices
     Worm.atom_m = Worm.atom_i
 
@@ -101,7 +106,8 @@ function Worm_close!(Worm::Worm_,Coords)
         i_t_2 = Worm.ira + σ 
         Sample_middle!(i_t_0,i_t_2,Worm.atom_i,Worm.atom_m,Coords)
         Probability = 1/Worm_open_p(σ, Worm::Worm_,Particle::Particle_)
-        if Probability >= 1 || Probability > QcasiRand(11,Particle.Count)
+        # if Probability >= 1 || Probability > QcasiRand(11,Particle.Count)
+        if Probability >= 1 || Probability > rand()
             Worm.state = false
         end
     end
@@ -112,7 +118,8 @@ function Worm_advance!(Worm::Worm_,Particle::Particle_)
     if σ < 0
         σ += Worm.Timeslices
     end
-    advance = QcasiRand(12,Particle.Count) + 1 
+    # advance = QcasiRand(12,Particle.Count) + 1 
+    advance = rand(1:Worm.m) + 1 
     if σ - advance > 0
         type = Worm.type
         offset =  Particle.Type_offset[type]
@@ -124,7 +131,8 @@ function Worm_advance!(Worm::Worm_,Particle::Particle_)
         p_t_0 = offset + (Worm.atom_i+i_t_0)*Worm.Timeslices
         p_t_2 = offset + (atom_i_new+i_t_2)*Worm.Timeslices
         for dim in 1:Dimension
-            Particle.Coords[p_t_2+1,dim] = Particle.Coords[p_t_0+1,dim] + QcasiRand(12,Particle.Count) ###
+            # Particle.Coords[p_t_2+1,dim] = Particle.Coords[p_t_0+1,dim] + QcasiRand(12,Particle.Count)
+            Particle.Coords[p_t_2+1,dim] = Particle.Coords[p_t_0+1,dim] +  Gaussian(gvar)###
         end
         Sample_middle!(i_t_0,i_t_2,Worm.atom_i,atom_i_new,Particle)
         E_p = Worm_Potential_Energy(i_t_0,i_t_2+1,Worm.atom_i,atom_i_new, Worm::Worm_,Particle::Particle_)
@@ -152,7 +160,8 @@ function Worm_recede!(Worm::Worm_,Particle::Particle_)
             atom_0 = Ring_Index[atom_0]
         end
         E_p = Worm_Potential_Energy(i_t_0,i_t_1,atom_0,atom_1, Worm::Worm_,Particle::Particle_)
-        if E_p > 0 || exp(E_p*Particle.τ) > QcasiRand(15,Particle.Count)
+        # if E_p > 0 || exp(E_p*Particle.τ) > QcasiRand(15,Particle.Count)
+        if E_p > 0 || exp(E_p*Particle.τ) > rand()
             Worm.ira = i_t_0 % Worm.Timeslices
             Worm.atom_i = atom_0
         end
@@ -217,7 +226,8 @@ function Worm_swap!(Worm::Worm_,Particle::Particle_)
             end
             Probability *= pnorm_old/pnorm_new
             # if Probability > QcasiRand(16,Particle.Count)
-            if Probability > 1 || Probability > QcasiRand(16,Particle.Count)
+            # if Probability > 1 || Probability > QcasiRand(16,Particle.Count)
+            if Probability > 1 || Probability > rand()
             for i_t in (i_t_0+1):(i_t_1-1)
                     offset = offset_0
                     for dim in 1:Dimension
@@ -274,7 +284,7 @@ function Sample_middle(i_t_0,i_t_2,atom_0,atom_2, Worm::Worm_,Particle::Particle
         gkin = (s0 + s2)/(Particle.T_wave²[Worm.type])
         for dim in 1:Dimension
             Particle.Coords[dim,p_t_1] = (s2*Particle.Coords[dim,p_t_0]+s0*Particle.Coords[dim,p_t_2])/(s2+s2)
-            Particle.Coords[dim,p_t_1] += gauss(gkin)
+            Particle.Coords[dim,p_t_1] += Gaussian(gkin)
         end
         Sample_middle(i_t_0,i_t_1,atom_0,atom_1, Worm::Worm_,Particle::Particle_)
         Sample_middle(i_t_1,i_t_2,atom_1,atom_2, Worm::Worm_,Particle::Particle_)
@@ -326,7 +336,7 @@ function atom_Swap(count, Worm::Worm_)
     for i_c in 1:count
         pnorm += Worm._Particle_table[i_c]
     end
-    prand = pnorm*rand_3()
+    prand = pnorm*rand()
     sum = 0.0
     i_c = 0
     while i_c < count && sum < prand
