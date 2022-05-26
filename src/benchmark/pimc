@@ -50,3 +50,59 @@ BenchmarkTools.Trial: 10000 samples with 836 evaluations.
 
  Memory estimate: 0 bytes, allocs estimate: 0.
  """
+
+
+
+
+ """
+BenchmarkTools.Trial: 46 samples with 1 evaluation.
+ Range (min … max):  100.242 ms … 117.168 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     109.986 ms               ┊ GC (median):    7.61%
+ Time  (mean ± σ):   109.753 ms ±   3.300 ms  ┊ GC (mean ± σ):  6.85% ± 2.41%
+
+                                ▅ █▂█▂▂   ▂▅                     
+  █▅▁▁▅▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁███████▅████▅▅▁▁▁▁▅▁▁▁▁▁▁▁▅▁▁▁▅ ▁
+  100 ms           Histogram: frequency by time          117 ms <
+
+ Memory estimate: 66.75 MiB, allocs estimate: 3023100.
+
+BenchmarkTools.Trial: 1 sample with 1 evaluation.
+ Single result which took 17.605 s (5.99% GC) to evaluate,
+ with a memory estimate of 8.29 GiB, over 385318500 allocations.
+"""
+@benchmark for i in 1:100
+        # for particle_type in 1:size(Particle.Type)[1]
+        # @benchmark MonteCarlo_move!(1,Particle)
+        # @benchmark MonteCarlo_move!(2,Particle)
+            for time_slices in 1:Particle.Timeslices
+                # Worm_move!(1)
+                # if time_slices == 1
+                    MonteCarlo_move!(2,Particle)
+                # else
+                    # Bisection_Move!(2,time_slices,Particle)
+                    # MonteCarlo_Rotation_move!(2,Particle)
+                # end
+            end
+
+        end
+
+"""
+BenchmarkTools.Trial: 1 sample with 1 evaluation.
+ Single result which took 17.605 s (5.99% GC) to evaluate,
+ with a memory estimate of 8.29 GiB, over 385318500 allocations.
+"""
+@benchmark for i in 1:100
+        # for particle_type in 1:size(Particle.Type)[1]
+        # @benchmark MonteCarlo_move!(1,Particle)
+        # @benchmark MonteCarlo_move!(2,Particle)
+            for time_slices in 1:Particle.Timeslices
+                # Worm_move!(1)
+                # if time_slices == 1
+                    MonteCarlo_move!(1,Particle)
+                # else
+                    # Bisection_Move!(2,time_slices,Particle)
+                    # MonteCarlo_Rotation_move!(2,Particle)
+                # end
+            end
+
+        end

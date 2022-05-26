@@ -1,0 +1,18 @@
+Dimension 3
+Density 0.2
+
+Temperature 0.5
+Timeslices  128
+
+#Atom/Mole          Name    Number  Type    Step    multilevel  PES_div             PES             Mass    Rotation_constant
+    Atom            paraH2  10      Bose    0.5     3           OCS_paraH2.PES      paraH2_paraH2   2       0.0
+    Molecule        OCS     1       Boltz   0.3     4           OCS_paraH2.PES      OCS_paraH2      60      2.3
+
+#                   Name    beads   Step
+Rotation            OCS     16     0.5
+Worm                paraH2      2      2.5
+
+#This is BLOCK and STEPS
+Log     500     5000
+
+#xyzInit Read    example.xyz 

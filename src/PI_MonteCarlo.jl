@@ -98,13 +98,13 @@ function Init_MonteCarlo(MC_IN_PATH::String)
         zeros(System.Pass_perBlock,16),
         Array{Int}(undef, k),
         Array{Int}(undef, k),
+        zeros(Int,k),
         Array{Int}(undef, k),
-        Array{Int}(undef, k),
-        Array{Int}(undef, k),
-        Array{Int}(undef, k),
+        collect(1:Total_particle),
+        collect(1:Total_particle),
         Array{Int}(undef, k),
         Array{Int}(undef, 16),
-        Array{Bool}(undef, k),
+        Array{Bool}(undef, Total_particle),
         false,
         Array{Any}(undef, k)
         )
@@ -136,17 +136,18 @@ function Init_MonteCarlo(MC_IN_PATH::String)
             Particle.mass[k] = setting[j,9]
             Particle.Rotation_constant[k] = setting[j,10]
             Particle.wordline[k] = Int(sum(Particle.Number[1:k])-Particle.Number[k])
+
+            if i == "Molecule"
+                Particle.Molcule_check[1+sum(Particle.Number)-setting[j,3]:sum(Particle.Number)] .= true
+            else
+                Particle.Molcule_check[1+sum(Particle.Number)-setting[j,3]:sum(Particle.Number)] .= false
+            end
+            
+
         elseif i == "Rotation"
             Particle.Rotation_Switch = true
             count = 0
-            for l in Particle.Name
-                count += 1
-                if l == setting[j,2]
-                    Particle.Molcule_check[count] = true
-                else
-                    Particle.Molcule_check[count] = false
-                end
-            end
+
             Particle.Rotation_Timeslices = setting[j,3]
             Particle.Rotation_Ratio = Int(Particle.Timeslices/Particle.Rotation_Timeslices)
             Particle.Rotation_step = setting[j,4]
@@ -188,20 +189,17 @@ end
 
 
 function MonteCarlo_move!(particle_type,Particle::Particle_)
-    Threads.@threads for i in 1:Particle.Number[particle_type]
-        particle_wordline = Particle.wordline[particle_type] + i
-        offset = (particle_wordline-1) * Particle.Timeslices
-        threads_slices = Particle.Timeslices/8
-        Threads.@threads for i in 1:2
-            for i_t in Int(2*i):Int(2*i+Particle.Timeslices/8)
-                for dim in 1:Dimension
-                    # disp = MonteCarlo_step[particle_type] * QcasiRand(1,Particle.Count)
-                    disp = Particle.Step[particle_type]*(rand() - 0.5)
+    #Threads.@threads 
+    for atom in 1:Particle.Number[particle_type]
+        particle_wordline = Particle.wordline[particle_type] + atom-1
+        offset = particle_wordline * Particle.Timeslices
+        for i_t in 1:Particle.Timeslices
+            for dim in 1:Dimension
+                # disp = MonteCarlo_step[particle_type] * QcasiRand(1,Particle.Count)
+                disp = Particle.Step[particle_type]*(rand() - 0.5)
 
-                    Particle.Coords_forward[offset+i_t,dim] = Particle.Coords[offset+i_t,dim] + disp
-                    # println(disp,"  ",Particle.Coords_forward[offset+i_t,dim])
-                end            
-            end
+                Particle.Coords_forward[offset+i_t,dim] = Particle.Coords[offset+i_t,dim] + disp
+            end            
         end
         Delta_E_p = Potential_Energy(particle_wordline,Particle.Coords_forward) - Potential_Energy(particle_wordline,Particle.Coords)
         MonteCarlo_accept!(Delta_E_p,offset,Particle)
