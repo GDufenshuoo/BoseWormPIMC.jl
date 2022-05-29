@@ -100,8 +100,8 @@ function Init_MonteCarlo(MC_IN_PATH::String)
         Array{Int}(undef, k),
         zeros(Int,k),
         Array{Int}(undef, k),
-        collect(1:Total_particle),
-        collect(1:Total_particle),
+        collect(0:Total_particle-1),
+        collect(0:Total_particle-1),
         Array{Int}(undef, k),
         Array{Int}(undef, 16),
         Array{Bool}(undef, Total_particle),
@@ -166,6 +166,9 @@ function Init_MonteCarlo(MC_IN_PATH::String)
             if setting[j,2] == "Read"
                 Particle.Coords = readdlm(setting[j,3], Float64; comments=true, comment_char='#')
             end
+        elseif i == "log"
+            System.Block_total = setting[j,2]
+            System.Pass_perBlock = setting[j,3]
         elseif i == "#"
         end
         j += 1
@@ -190,33 +193,36 @@ end
 
 function MonteCarlo_move!(particle_type,Particle::Particle_)
     #Threads.@threads 
-    for atom in 1:Particle.Number[particle_type]
-        particle_wordline = Particle.wordline[particle_type] + atom-1
-        offset = particle_wordline * Particle.Timeslices
-        for i_t in 1:Particle.Timeslices
-            for dim in 1:Dimension
+    pass = 0
+    for atom in 0:Particle.Number[particle_type]-1
+        particle_0 = Particle.wordline[particle_type] + atom
+        offset = particle_0 * Particle.Timeslices
+        for dim in 1:Dimension
+            for i_t in 1:Particle.Timeslices
                 # disp = MonteCarlo_step[particle_type] * QcasiRand(1,Particle.Count)
-                disp = Particle.Step[particle_type]*(rand() - 0.5)
-
-                Particle.Coords_forward[offset+i_t,dim] = Particle.Coords[offset+i_t,dim] + disp
-            end            
+                Particle.Coords_forward[offset+i_t,dim] = Particle.Coords[offset+i_t,dim] + Particle.Step[particle_type]*(rand() - 0.5)
+            end
         end
-        Delta_E_p = Potential_Energy(particle_wordline,Particle.Coords_forward) - Potential_Energy(particle_wordline,Particle.Coords)
-        MonteCarlo_accept!(Delta_E_p,offset,Particle)
+        pass +=  MonteCarlo_accept!(
+            (Potential_Energy(particle_0,Particle.Coords_forward) - Potential_Energy(particle_0,Particle.Coords)),
+            offset,
+            Particle)
     end
+    return pass
 end
 
 """
 multilevel Metropolis
 """
 function Bisection_Move!(particle_type,time_slices,Particle::Particle_)
-    
-    Threads.@threads for i in 1:Particle.Number[particle_type]
-        offset = Particle.wordline[particle_type]*Particle.Timeslices
-        gatom = Particle.Timeslices
+    pass = 0
+    # Threads.@threads 
+    for i in 0:Particle.Number[particle_type]-1
+        gatom = Particle.wordline[particle_type] + i
+        offset = gatom*Particle.Timeslices
         pit = Int((time_slices + Particle.multilevel_σ[particle_type])%Particle.Timeslices)
 
-        for dim in 1:3
+        for dim in 1:Dimension
             Particle.Coords_forward[offset+time_slices,dim] = Particle.Coords[offset+time_slices,dim]
             Particle.Coords_forward[offset+pit,dim] = Particle.Coords[offset+pit,dim]
         end
@@ -229,23 +235,23 @@ function Bisection_Move!(particle_type,time_slices,Particle::Particle_)
             E_p0 = 0.0
             E_p1 = 0.0
             t_right = 0
-            k = false
-            while t_right < Particle.multilevel_σ[particle_type] && k == true
+            k = true
+            while t_right < Particle.multilevel_σ[particle_type] && k
                 t_left = t_right
                 t_right = t_left + level_σ
                 t_middle = Int((t_left+t_right)/2)
-                p_t_left    = (time_slices + t_left)   %Particle.Timeslices+1
-                p_t_middle  = (time_slices + t_middle) %Particle.Timeslices+1
-                p_t_right   = (time_slices + t_right)  %Particle.Timeslices+1
+                p_t_left    = (time_slices + t_left)   %Particle.Timeslices
+                p_t_middle  = (time_slices + t_middle) %Particle.Timeslices
+                p_t_right   = (time_slices + t_right)  %Particle.Timeslices
                 for dim in 1:Dimension
                     Particle.Coords_forward[offset+p_t_middle,dim] = 0.5*(Particle.Coords_forward[offset+p_t_left,dim]+Particle.Coords_forward[offset+p_t_right,dim])
-                    Particle.Coords_forward[offset+p_t_middle,dim] += gauss(bkin_norm)
+                    Particle.Coords_forward[offset+p_t_middle,dim] += Gaussian(bkin_norm)
                 end
-                E_p0 += Potential_Energy_single(gatom,Particle.Coords_forward,p_t_middle,Particle) - Potential_Energy_single(gatom,Particle.Coords,p_t_middle,Particle)
+                E_p0 += Potential_Energy_single(gatom,Particle.Coords_forward,p_t_middle) - Potential_Energy_single(gatom,Particle.Coords,p_t_middle)
                 if t_left != 1
-                    E_p0 += Potential_Energy_single(gatom,Particle.Coords_forward,p_t_left,Particle) - Potential_Energy_single(gatom,Particle.Coords,p_t_left,Particle)
+                    E_p0 += Potential_Energy_single(gatom,Particle.Coords_forward,p_t_left) - Potential_Energy_single(gatom,Particle.Coords,p_t_left)
                 end
-                k = true
+                k = false
             end
             Δ_v = (E_p0 - 2*E_p1)*bpot_norm
             # if Δ_v < 0 || exp(-Δ_v)>rand_3()
@@ -256,39 +262,110 @@ function Bisection_Move!(particle_type,time_slices,Particle::Particle_)
                         Particle.Coords[offset+p_i_t,dim] = Particle.Coords_forward[offset+p_i_t,dim]
                     end 
                 end
+                pass += 1 
             end
         end
     end
+    return pass
+end
+
+"""
+multilevel Metropolis
+"""
+function Bisection_Move_Exchange!(particle_type,time_slices,Particle::Particle_)
+    pass = 0
+    for particle in 0:Particle.Number[particle_type]-1
+        offset_0 = (Particle.wordline[particle_type]+particle)*Particle.Timeslices
+        offset_1 = offset_0
+
+        time_1 = time_slices + Particle.multilevel_σ[particle_type]
+        time_p = time_1 % Particle.Timeslices
+        if time_p != time_1
+            offset_1 = (Particle.wordline[particle_type] + Particle.Particle_Index[particle_type]) *Particle.Timeslices
+        end
+
+        for dim in 1:Dimension
+            Particle.Coords_forward[offset_0+time_slices,dim] = Particle.Coords[offset_0+time_slices,dim]
+            Particle.Coords_forward[offset_1+time_p+1,dim] = Particle.Coords[offset_1+time_p+1,dim]
+        end
+
+        bnorm = 1/(Particle.λ*Particle.τ)
+        for level in 0:Particle.multilevel[particle_type]-1
+            level_σ = Int(2^(Particle.multilevel[particle_type]-level))
+            bkin_norm = bnorm/level_σ
+            bpot_norm = 0.5*Particle.τ*level_σ
+            E_p0 = 0.0
+            E_p1 = 0.0
+            t_right = 0
+            k = true
+            while t_right < Particle.multilevel_σ[particle_type] && k
+                t_left = t_right
+                t_right = t_left + level_σ
+                t_middle = Int((t_left+t_right)/2)
+                p_t_left    = (time_slices + t_left)   %Particle.Timeslices
+                p_t_middle  = (time_slices + t_middle) %Particle.Timeslices
+                p_t_right   = (time_slices + t_right)  %Particle.Timeslices
+                offset_left = offset_0
+                offset_middle = offset_0
+                offset_right = offset_0
+                if offset_left != time_slices + t_left
+                    offset_left = offset_1
+                elseif offset_middle != time_slices + t_left
+                    offset_middle = offset_1
+                elseif offset_right != time_slices + t_left
+                    offset_right = offset_1
+                end
+                for dim in 1:Dimension
+                    Particle.Coords_forward[offset_middle+p_t_middle+1,dim] = 0.5*(Particle.Coords_forward[offset_left+p_t_left+1,dim]+Particle.Coords_forward[offset_right+p_t_right+1,dim])
+                    Particle.Coords_forward[offset_middle+p_t_middle+1,dim] += Gaussian(bkin_norm)
+                end
+                gatom_left = Int(offset_left/Particle.Timeslices)
+                # gatom_middle = Int(offset_middle/Particle.Timeslices)
+                E_p0 += Potential_Energy_single(gatom_left,Particle.Coords_forward,p_t_middle) - Potential_Energy_single(gatom_left,Particle.Coords,p_t_middle)
+                if t_left != 1
+                    E_p0 += Potential_Energy_single(gatom_left,Particle.Coords_forward,p_t_left) - Potential_Energy_single(gatom_left,Particle.Coords,p_t_left)
+                end
+                k = false
+            end
+            Δ_v = (E_p0 - 2*E_p1)*bpot_norm
+            # if Δ_v < 0 || exp(-Δ_v)>rand_3()
+            if Δ_v <= 0 || exp(-Δ_v)>rand()
+                for i_t in time_slices:time_slices+Particle.multilevel[particle_type]
+                    p_i_t = (i_t % Particle.Timeslices) + 1
+                    offset = offset_0
+                    if p_i_t != i_t
+                        offset = offset_1
+                    end
+                    for dim in 1:Dimension
+                         Particle.Coords[offset+p_i_t,dim] = Particle.Coords_forward[offset+p_i_t,dim]
+                    end 
+                end
+                pass += 1
+            end
+        end
+    end
+    return pass
 end
 
 function MonteCarlo_accept!(Delta_E,offset,Particle::Particle_)
     # if Delta_E < 0 || exp(-Delta_E*Particle.τ) > QcasiRand(2,Particle.Particle.Count)
-    if Delta_E < 0 || exp(-Delta_E*Particle.τ) > rand()
+    if Delta_E <= 0 || exp(-Delta_E*Particle.τ) > rand()
         for i_t in 1:Particle.Timeslices
             for dim in 1:Dimension
                 Particle.Coords[offset+i_t,dim] = Particle.Coords_forward[offset+i_t,dim]
             end            
         end
-        return true
+        return 1
+    else
+        return 0
     end
-    return false
 end
 
-function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
+function MonteCarlo_Rotation_move!(particle_type::Int,Angle_Cosine,Particle::Particle_)
+    pass = 0
+
     particle_wordline = Particle.wordline[particle_type]
     offset = particle_wordline * Particle.Timeslices
-
-    range = Particle.Number[particle_type]*Particle.Rotation_Timeslices
-    Angle_Cosine = zeros(range,Dimension)
-    for i_t in 1:range
-        cosθ = Particle.Angles[i_t+offset,2]
-        ϕ = Particle.Angles[i_t+offset,1]
-        sinθ = sqrt(1-cosθ^2)
-        i_t_r = Int(i_t ÷ Particle.Rotation_Ratio)+1
-        Angle_Cosine[i_t_r,1] = sinθ*cos(ϕ)
-        Angle_Cosine[i_t_r,2] = sinθ*sin(ϕ)
-        Angle_Cosine[i_t_r,3] = cosθ
-    end
 
     for i_t in 1:Particle.Rotation_Timeslices
         i_t_0 = i_t - 1
@@ -313,7 +390,7 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
 
         p_0 = 0.0
         p_1 = 0.0
-        for dim in 1:Dimension
+        @simd for dim in 1:Dimension
             p_0 += Angle_Cosine[i_t_0,dim]*Angle_Cosine[i_t,dim]
             p_1 += Angle_Cosine[i_t,dim]*Angle_Cosine[i_t_2,dim]
         end
@@ -327,13 +404,13 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
         i_t_r0 = i_t_r1 + Particle.Rotation_Ratio
 
         E_p_present = 0.0
-        for i_t_r in (i_t_r0+1):i_t_r1
+        for i_t_r in i_t_r0:i_t_r1-1
             E_p_present += Potential_rotation_Energy(particle_wordline,Angle_Cosine,i_t_r)
         end
 
         p_0 = 0.0
         p_1 = 0.0
-        for dim in 1:Dimension
+        @simd for dim in 1:Dimension
             p_0 += Angle_Cosine[i_t_0,dim]*Particle.Coords_forward[t_1,dim]
             p_1 += Particle.Coords_forward[t_1,dim]*Angle_Cosine[i_t_2,dim]
         end
@@ -357,7 +434,6 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
         end
 
         Density *= exp(-Particle.τ*(E_p_forword-E_p_present))
-
         # if Rotation_Density > 1 || Rotation_Density > QcasiRand(5,Particle.Count)
         if Density > 1 || Density > rand()
             Particle.Angles[t_1,2] = cosθ
@@ -366,8 +442,10 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Particle::Particle_)
             for dim in 1:Dimension
                 Angle_Cosine[i_t,dim] = Particle.Coords_forward[t_1,dim]
             end
+            pass += 1
         end
     end
+    return pass
 end
 
 function Fix_range(i,range_A,range,range_B)
@@ -388,6 +466,21 @@ function Fix_cos_range(i)
     return i
 end
 
+function Angle_Cosine_convert(particle_type,Particle::Particle_)
+    offset = Particle.wordline[particle_type] * Particle.Timeslices
+    range = Particle.Number[particle_type]*Particle.Rotation_Timeslices
+    Angle_Cosine = zeros(range,Dimension)
+    @simd for i_t in 1:range
+        cosθ = Particle.Angles[i_t+offset,2]
+        ϕ = Particle.Angles[i_t+offset,1]
+        sinθ = sqrt(1-cosθ^2)
+        i_t_r = fld(i_t,Particle.Rotation_Ratio)+1
+        Angle_Cosine[i_t_r,1] = sinθ*cos(ϕ)
+        Angle_Cosine[i_t_r,2] = sinθ*sin(ϕ)
+        Angle_Cosine[i_t_r,3] = cosθ
+    end
+    return Angle_Cosine
+end
 
 """
 @benchmark for i in 1:100000
