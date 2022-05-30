@@ -223,14 +223,15 @@ function Bisection_Move!(particle_type,time_slices,Particle::Particle_)
         pit = Int((time_slices + Particle.multilevel_σ[particle_type])%Particle.Timeslices)
 
         for dim in 1:Dimension
-            Particle.Coords_forward[offset+time_slices,dim] = Particle.Coords[offset+time_slices,dim]
-            Particle.Coords_forward[offset+pit,dim] = Particle.Coords[offset+pit,dim]
+            Particle.Coords_forward[offset+time_slices+1,dim] = Particle.Coords[offset+time_slices+1,dim]
+            Particle.Coords_forward[offset+pit+1,dim] = Particle.Coords[offset+pit+1,dim]
         end
 
         bnorm = 1/(Particle.λ*Particle.τ)
         for level in 0:Particle.multilevel[particle_type]-1
             level_σ = Int(2^(Particle.multilevel[particle_type]-level))
             bkin_norm = bnorm/level_σ
+            # println(bkin_norm)
             bpot_norm = 0.5*Particle.τ*level_σ
             E_p0 = 0.0
             E_p1 = 0.0
@@ -239,13 +240,17 @@ function Bisection_Move!(particle_type,time_slices,Particle::Particle_)
             while t_right < Particle.multilevel_σ[particle_type] && k
                 t_left = t_right
                 t_right = t_left + level_σ
-                t_middle = Int((t_left+t_right)/2)
+                t_middle = Int(div((t_left+t_right),2))
                 p_t_left    = (time_slices + t_left)   %Particle.Timeslices
                 p_t_middle  = (time_slices + t_middle) %Particle.Timeslices
                 p_t_right   = (time_slices + t_right)  %Particle.Timeslices
                 for dim in 1:Dimension
-                    Particle.Coords_forward[offset+p_t_middle,dim] = 0.5*(Particle.Coords_forward[offset+p_t_left,dim]+Particle.Coords_forward[offset+p_t_right,dim])
-                    Particle.Coords_forward[offset+p_t_middle,dim] += Gaussian(bkin_norm)
+                    Particle.Coords_forward[offset+p_t_middle+1,dim] = 0.5*(Particle.Coords_forward[offset+p_t_left+1,dim]+Particle.Coords_forward[offset+p_t_right+1,dim])
+                    # println(Particle.Coords_forward[offset+p_t_middle+1,dim]," a")
+                    gau = Gaussian(bkin_norm)
+                    # println(gau)
+                    Particle.Coords_forward[offset+p_t_middle+1,dim] += gau
+                    # println(Particle.Coords_forward[offset+p_t_middle+1,dim])
                 end
                 E_p0 += Potential_Energy_single(gatom,Particle.Coords_forward,p_t_middle) - Potential_Energy_single(gatom,Particle.Coords,p_t_middle)
                 if t_left != 1
@@ -277,12 +282,14 @@ function Bisection_Move_Exchange!(particle_type,time_slices,Particle::Particle_)
     for particle in 0:Particle.Number[particle_type]-1
         offset_0 = (Particle.wordline[particle_type]+particle)*Particle.Timeslices
         offset_1 = offset_0
+        # println(offset_0)
 
         time_1 = time_slices + Particle.multilevel_σ[particle_type]
         time_p = time_1 % Particle.Timeslices
         if time_p != time_1
             offset_1 = (Particle.wordline[particle_type] + Particle.Particle_Index[particle_type]) *Particle.Timeslices
         end
+        # println(offset_1)
 
         for dim in 1:Dimension
             Particle.Coords_forward[offset_0+time_slices,dim] = Particle.Coords[offset_0+time_slices,dim]
@@ -293,6 +300,7 @@ function Bisection_Move_Exchange!(particle_type,time_slices,Particle::Particle_)
         for level in 0:Particle.multilevel[particle_type]-1
             level_σ = Int(2^(Particle.multilevel[particle_type]-level))
             bkin_norm = bnorm/level_σ
+            # println(bkin_norm)
             bpot_norm = 0.5*Particle.τ*level_σ
             E_p0 = 0.0
             E_p1 = 0.0
@@ -364,8 +372,8 @@ end
 function MonteCarlo_Rotation_move!(particle_type::Int,Angle_Cosine,Particle::Particle_)
     pass = 0
 
-    particle_wordline = Particle.wordline[particle_type]
-    offset = particle_wordline * Particle.Timeslices
+    particle_0 = Particle.wordline[particle_type]
+    offset = particle_0 * Particle.Timeslices
 
     for i_t in 1:Particle.Rotation_Timeslices
         i_t_0 = i_t - 1
@@ -401,13 +409,13 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Angle_Cosine,Particle::Par
             Density_present = 0.0
         end
         i_t_r1 = i_t * Particle.Rotation_Ratio
-        i_t_r0 = i_t_r1 + Particle.Rotation_Ratio
+        i_t_r0 = i_t_r1 - Particle.Rotation_Ratio
 
         E_p_present = 0.0
         for i_t_r in i_t_r0:i_t_r1-1
-            E_p_present += Potential_rotation_Energy(particle_wordline,Angle_Cosine,i_t_r)
+            E_p_present += Potential_rotation_Energy(particle_0,Angle_Cosine,i_t_r)
         end
-
+        # println(i_t_r0:i_t_r1-1)
         p_0 = 0.0
         p_1 = 0.0
         @simd for dim in 1:Dimension
@@ -422,8 +430,8 @@ function MonteCarlo_Rotation_move!(particle_type::Int,Angle_Cosine,Particle::Par
         # i_t_r1 = i_t_r0 + Particle.Rotation_Ratio
 
         E_p_forword = 0.0
-        for i_t_r in (i_t_r0+1):i_t_r1
-            E_p_forword += Potential_rotation_Energy(particle_wordline,Particle.Coords_forward,i_t_r)
+        for i_t_r in i_t_r0:i_t_r1-1
+            E_p_forword += Potential_rotation_Energy(particle_0,Particle.Coords_forward,i_t_r)
         end
 
         Density = 0.0
@@ -499,7 +507,8 @@ Time  (mean ± σ):   3.948 ms ± 389.519 μs  ┊ GC (mean ± σ):  0.00% ± 0.
 Memory estimate: 0 bytes, allocs estimate: 0.
 """
 function Gaussian(α)
-    sqrt(-log(rand()))*cos(2*pi*rand())/α
+    gaussian = sqrt(-log(rand()))*cos(2*pi*rand())/α
+    return gaussian
 end
 
 

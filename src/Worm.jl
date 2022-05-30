@@ -57,11 +57,11 @@ function Worm_move!(particle_type::Int, Worm::Worm_=Worm, Particle::Particle_=Pa
     Worm_pass = zeros(Int,10)
     for i in 1:Particle.Number[particle_type]
         if Worm.state
-            Worm_pass[1] += 1
-            Worm_pass[2] += Worm_close!(Worm::Worm_,Particle::Particle_)
-        else
             Worm_pass[3] += 1
-            Worm_pass[4] += Worm_open!(particle_type,Worm::Worm_,Particle::Particle_)
+            Worm_pass[4] += Worm_close!(Worm::Worm_,Particle::Particle_)
+        else
+            Worm_pass[1] += 1
+            Worm_pass[2] += Worm_open!(particle_type,Worm::Worm_,Particle::Particle_)
         end
         if Worm.state
             # if QcasiRand(6,Particle.Count) > 0.5
@@ -132,7 +132,7 @@ function Worm_advance!(Worm::Worm_,Particle::Particle_)
         σ += Worm.Timeslices
     end
     # advance = QcasiRand(12,Particle.Count) + 1 
-    advance = rand(0:Worm.m)
+    advance = rand(1:Worm.m)
     if σ > advance
         type = Worm.type
         wordline =  Particle.wordline[type]#* Worm.Timeslices
@@ -141,6 +141,9 @@ function Worm_advance!(Worm::Worm_,Particle::Particle_)
         ira_new = i_t_2 % Worm.Timeslices
         atom_i_new = Worm.atom_i
         gvar = 1/advance*Particle.T_wave²[type]
+        if gvar < 1e-1
+            gvar = 1e-1
+        end
         p_t_0 = (wordline + Worm.atom_i)*Worm.Timeslices + i_t_0 % Worm.Timeslices+1
         p_t_2 = (wordline + atom_i_new)*Worm.Timeslices + i_t_2 % Worm.Timeslices+1
         for dim in 1:Dimension
@@ -219,9 +222,9 @@ function Worm_swap!(Worm::Worm_,Particle::Particle_)
                 atom_0 = Particle.Ring_Index[atom_1+1]
             end
             type = Worm.type
-            offset_0 = offset_1 = (Particle.wordline[type] + atom_0)*Worm.Timeslices
-            offset_1 = offset_1 = (Particle.wordline[type] + atom_1)*Worm.Timeslices
-            offset_w = offset_1 = (Particle.wordline[type] + atom_w)*Worm.Timeslices
+            offset_0 = (Particle.wordline[type] + atom_0)*Worm.Timeslices
+            offset_1 = (Particle.wordline[type] + atom_1)*Worm.Timeslices
+            offset_w = (Particle.wordline[type] + atom_w)*Worm.Timeslices
             for dim in 1:Dimension
                 Particle.Coords_forward[offset_0+p_i_t_0+1,dim] = Particle.Coords[offset_w+p_i_t_0+1,dim]
                 Particle.Coords_forward[offset_1+p_i_t_1+1,dim] = Particle.Coords[offset_1+p_i_t_1+1,dim]

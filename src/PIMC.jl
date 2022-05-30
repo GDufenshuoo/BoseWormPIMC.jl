@@ -52,7 +52,7 @@ end
 println("Begin BLOCK")
 for BLOCK in 1:System.Block_total
     for pass in 1:System.Pass_perBlock
-        for time_slices in 1:Particle.Timeslices
+        for time_slices in 0:Particle.Timeslices-1
             global Worm_pass .+= Worm_move!(1,Worm,Particle)
             if !Worm.state
                 global Bisection_step[1] += Particle.multilevel[2]*Particle.Number[2]
@@ -66,7 +66,7 @@ for BLOCK in 1:System.Block_total
             global Bisection_step[2] += Particle.multilevel[2]*Particle.Number[2]
             global Bisection_pass[2] += Bisection_Move!(2,time_slices,Particle)
             global Rotation_step += Particle.Rotation_Timeslices
-            global Rotation_pass += MonteCarlo_Rotation_move!(2,Angle_Cosine,Particle)
+            # global Rotation_pass += MonteCarlo_Rotation_move!(2,Angle_Cosine,Particle)
             end
         end
         Observe_2d!(g2d,Particle)

@@ -176,7 +176,7 @@ function Potential_rotation_Energy_loop_i_t(Angle_Cosine, offset_0, offset_i, i_
         end
         E_rp = PES_2D(r,Cos_t,Particle.Potential)
     end
-
+    println(E_rp)
     return E_rp
 end
 
