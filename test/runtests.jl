@@ -2,5 +2,5 @@ using PIMC
 using Test
 
 @testset "PIMC.jl" begin
-    # Write your tests here.
+    # @test PIMC.pimc("MC.in")
 end
