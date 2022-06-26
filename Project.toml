@@ -12,7 +12,7 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 [compat]
 Interpolations = "0.13"
 JLD2 = "0.4"
-Plots = "1"
+Plots = "1.31"
 julia = "1.7"
 
 [extras]
