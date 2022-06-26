@@ -1,6 +1,6 @@
-using PIMC
+using BoseWormPIMC
 using Test
 
-@testset "PIMC.jl" begin
-    # @test PIMC.pimc("MC.in")
+@testset "BoseWormPIMC.jl" begin
+    @test BoseWormPIMC.pimc("MC.in")
 end
