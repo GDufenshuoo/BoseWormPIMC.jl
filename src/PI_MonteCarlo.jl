@@ -1,3 +1,10 @@
+export
+    MonteCarlo_move!,
+    Bisection_Move!,
+    Bisection_Move_Exchange!,
+    MonteCarlo_Rotation_move!,
+    Angle_Cosine_convert
+
 
 function MonteCarlo_move!(particle_type;Worm::Worm_=Worm,Particle::Particle_=Particle)
     pass = 0
