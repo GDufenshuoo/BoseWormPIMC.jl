@@ -4,6 +4,78 @@ export pimc
 
 using JLD2
 
+mutable struct System_setting{T,K}
+    Dimension::K
+    Density::T
+    Τ::T
+    Block_step::K
+    Block_total::K
+    Pass_perBlock::K
+end
+
+mutable struct Worm_{T}
+    ira::Int
+    masha::Int
+    type::Int
+    atom_i::Int
+    atom_m::Int
+    Timeslices::Int
+    m::Int
+    Cutoff::Int
+    c::T 
+    Cutoff²::T
+    _norm::T
+    dr²::Vector{T}
+    atom_list::Vector{T}
+    Particle_table::Vector{T}
+    state::Bool
+end
+
+struct Potential_{T}
+    _PES
+    Dimension::Int
+    scale_begin::Vector{T}
+    scale_end::Vector{T}
+    bin::Vector{T}
+end
+
+mutable struct Particle_{T}
+    β::T
+    τ::T
+    BoxSize::T
+    Rotation_σ::T
+    Rotation_τ::T
+    Rotation_step::T
+    Dimension::Int
+    Rotation_Ratio::Int
+    Rotation_Timeslices::Int
+    Timeslices::Int
+    MonteCarlo_Step::Int
+    Total_particle::Int
+    Name::Vector{String}
+    λ::Vector{T}
+    Step::Vector{T}
+    mass::Vector{T}
+    T_wave²::Vector{T}
+    Rotation_constant::Vector{T}
+    Coords::Matrix{T}
+    Coords_forward::Matrix{T}
+    Angles::Matrix{T}
+    Angle_Cosine::Matrix{T}
+    Quasi_rand::Matrix{T}
+    multilevel::Vector{Int}
+    Type::Vector{Int}
+    Number::Vector{Int}
+    wordline::Vector{Int}
+    Particle_Index::Vector{Int}
+    Ring_Index::Vector{Int}
+    multilevel_σ::Vector{Int}
+    Accept::Vector{Int}
+    Molcule_check::Vector{Bool}
+    Rotation_Switch::Bool
+    Potential
+end
+
 include("InitGenerate.jl")
 include("PI_MonteCarlo.jl")
 include("Worm.jl")
